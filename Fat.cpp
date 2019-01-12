@@ -54,6 +54,7 @@ Fat::Fat()
   _ledDuration = 60000;
   _ledStartTime = millis();
   _readCaptorDH11StartTime = millis();
+  _lastWhasingTime = 0;
 
 }
 
@@ -202,6 +203,7 @@ void Fat::_wash() {
     _stopMotorPump();
     _stopMotorBarrel();
     _washingStartTime = 0;
+    _lastWhasingTime = millis();
     _isWashing = false;
   }
   
@@ -231,7 +233,7 @@ void Fat::displayMessage() {
 
   // Compose all messages
   String mode = "";
-  String state = ""; 
+  String state = "";
 
   if (_isModeAuto) {
     mode = "Auto";
@@ -256,7 +258,7 @@ void Fat::displayMessage() {
   }
 
   if (_isWashing) {
-    state = "Washing";
+    state = "Wash " + String(_currentDelayWashing());
   }
 
   if (!_isSecurity && !_isWashing && !_isForceMotorPump && !_isForceMotorBarrel) {
@@ -264,19 +266,20 @@ void Fat::displayMessage() {
   }
 
   
-  _message[0] = String("Mode:") + mode;
-  _message[1] = String("State:") + state;
+  _message[0] = String("Mode: ") + mode;
+  _message[1] = String("State: ") + state;
+  _message[2] = String("Washing: ") + String(_lastWashingTimeInHour()) + String("hrs");
 
   // Check to update value
   if((currentTime - _readCaptorDH11StartTime) > CAPTOR_TEMP_HUMIDITY_REFRESH_MILLIS) {
-    _message[2] = String("Tempeture: ") + (int)_captorTempetureHumidity.getTemperature();
-    _message[3] = String("Humidity: ") + (int)_captorTempetureHumidity.getHumidity();
+    _message[3] = String("Tempeture: ") + (int)_captorTempetureHumidity.getTemperature();
+    _message[4] = String("Humidity: ") + (int)_captorTempetureHumidity.getHumidity();
     _readCaptorDH11StartTime = millis();
   }
-  _message[4] = String("Captor1 T: ") + (!_captorWatterTop.read());
-  _message[5] = String("Cpator1 D: ") + (_captorWatterDown.read());
-  _message[6] = String("Captor2 T: ") + (!_captorWatterSecurityTop.read());
-  _message[7] = String("Captor2 D: ") + (_captorWatterSecurityDown.read());
+  _message[5] = String("Captor1 T: ") + (!_captorWatterTop.read());
+  _message[6] = String("Cpator1 D: ") + (_captorWatterDown.read());
+  _message[7] = String("Captor2 T: ") + (!_captorWatterSecurityTop.read());
+  _message[8] = String("Captor2 D: ") + (_captorWatterSecurityDown.read());
   
   // Display message
   if((currentTime - _displayDuration) > LCD_REFRESH_MILLIS) {
@@ -313,6 +316,7 @@ void Fat::run() {
      _isModeAuto = false;
      _stopMotorPump();
      _stopMotorBarrel();
+     _isWashing = false;
   }
   
 
@@ -342,7 +346,7 @@ void Fat::run() {
   }
 
   // Check if force washing is needed
-  if (_buttonForceWash.fell()) {
+  if (_buttonForceWash.fell() && _isModeAuto) {
     _wash();
   }
 
@@ -445,6 +449,34 @@ void Fat::_manageLed() {
   }
 }
 
+/**
+ * Permit to get the duration between now and the last washing in hours
+ */
+double Fat::_lastWashingTimeInHour(){
+
+  return (_lastWhasingTime / 3600000);
+  
+}
+
+/**
+ * Return the number of second that stay before the washing ended
+ */
+int Fat::_currentDelayWashing(){
+
+
+  unsigned long currentTime;
+
+  if (_washingStartTime == 0) {
+    return 0;
+  }
+  
+  currentTime = millis();
+
+  return int((_washingDuration - (currentTime - _washingStartTime))/1000);
+  
+  
+}
+
 
 void Fat::debug(){
 
@@ -467,7 +499,7 @@ void Fat::debug(){
   Serial.println(String("Btn Force pump: ") + (!_buttonForceMotorPump.read()));
   Serial.println(String("Btn menu: ") + (!_buttonLCDDisplayDown.read()));
 
-  // Dsiplay captor state
+  // Display captor state
   Serial.println(String("Cpt top: ") + (!_captorWatterTop.read()));
   Serial.println(String("Cpt down: ") + (_captorWatterDown.read()));
   Serial.println(String("Cpt2 top: ") + (!_captorWatterSecurityTop.read()));
@@ -476,6 +508,9 @@ void Fat::debug(){
   // Display relay state
   Serial.println(String("Relay Pump: ") + _motorPump.state());
   Serial.println(String("Relay Barrel: ") + _motorBarrel.state());
+
+  // Display last washing time
+  Serial.println(String("Last washing time: ") + _lastWashingTimeInHour() + String(" hrs"));
   
   delay(2000);
 }
