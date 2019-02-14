@@ -71,7 +71,7 @@ class Fat
     void _wash();
     void _updateInputState();
     void _manageLed();
-    double _lastWashingTimeInHour();
+    long _lastWashingTimeInMinutes();
     int _currentDelayWashing();
     unsigned long _displayDuration;
     unsigned long _ledStartTime;

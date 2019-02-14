@@ -268,7 +268,7 @@ void Fat::displayMessage() {
   
   _message[0] = String("Mode: ") + mode;
   _message[1] = String("State: ") + state;
-  _message[2] = String("Washing: ") + String(_lastWashingTimeInHour()) + String("hrs");
+  _message[2] = String("Washing: ") + String(_lastWashingTimeInMinutes()) + String("min");
 
   // Check to update value
   if((currentTime - _readCaptorDH11StartTime) > CAPTOR_TEMP_HUMIDITY_REFRESH_MILLIS) {
@@ -450,11 +450,11 @@ void Fat::_manageLed() {
 }
 
 /**
- * Permit to get the duration between now and the last washing in hours
+ * Permit to get the duration between now and the last washing in minutes
  */
-double Fat::_lastWashingTimeInHour(){
+long Fat::_lastWashingTimeInMinutes(){
 
-  return (_lastWhasingTime / 3600000);
+  return ((millis() - _lastWhasingTime) / 60000);
   
 }
 
@@ -510,7 +510,7 @@ void Fat::debug(){
   Serial.println(String("Relay Barrel: ") + _motorBarrel.state());
 
   // Display last washing time
-  Serial.println(String("Last washing time: ") + _lastWashingTimeInHour() + String(" hrs"));
+  Serial.println(String("Last washing time: ") + _lastWashingTimeInMinutes() + String(" min"));
   
   delay(2000);
 }
