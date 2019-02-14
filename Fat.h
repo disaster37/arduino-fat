@@ -7,7 +7,8 @@
 #include "LiquidCrystal.h"
 #include "DHTesp.h"
 
-#define SIZE_MESSAGE 9
+#define SIZE_MESSAGE 10
+#define SIZE_AVERAGE_WASHING_TIME 10
 #define LCD_REFRESH_MILLIS 200
 #define CAPTOR_TEMP_HUMIDITY_REFRESH_MILLIS 2000
 
@@ -56,6 +57,8 @@ class Fat
     unsigned long _washingDuration;
     unsigned long _washingStartTime;
     unsigned long _lastWhasingTime;
+    long _listLastWashingTime[SIZE_AVERAGE_WASHING_TIME];
+    int _currentPositionInListLastWashingTime;
     bool _isWashing;
     bool _isModeAuto;
     bool _isSecurity;
@@ -73,6 +76,8 @@ class Fat
     void _manageLed();
     long _lastWashingTimeInMinutes();
     int _currentDelayWashing();
+    void _addWashingDuration(unsigned long lastWashingTime);
+    long _getAverageWashingDurationInMinutes();
     unsigned long _displayDuration;
     unsigned long _ledStartTime;
     unsigned long _ledDuration;

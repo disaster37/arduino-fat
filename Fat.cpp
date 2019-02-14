@@ -56,6 +56,11 @@ Fat::Fat()
   _readCaptorDH11StartTime = millis();
   _lastWhasingTime = 0;
 
+  _currentPositionInListLastWashingTime = 0;
+  for(int i = 0; i < SIZE_AVERAGE_WASHING_TIME; i++) {
+    _listLastWashingTime[i] = 0;
+  }
+
 }
 
 /**
@@ -203,6 +208,7 @@ void Fat::_wash() {
     _stopMotorPump();
     _stopMotorBarrel();
     _washingStartTime = 0;
+    _addWashingDuration(_lastWhasingTime);
     _lastWhasingTime = millis();
     _isWashing = false;
   }
@@ -269,17 +275,18 @@ void Fat::displayMessage() {
   _message[0] = String("Mode: ") + mode;
   _message[1] = String("State: ") + state;
   _message[2] = String("Washing: ") + String(_lastWashingTimeInMinutes()) + String("min");
+  _message[3] = String("Avg: ") + String(_getAverageWashingDurationInMinutes()) + String("min");
 
   // Check to update value
   if((currentTime - _readCaptorDH11StartTime) > CAPTOR_TEMP_HUMIDITY_REFRESH_MILLIS) {
-    _message[3] = String("Tempeture: ") + (int)_captorTempetureHumidity.getTemperature();
-    _message[4] = String("Humidity: ") + (int)_captorTempetureHumidity.getHumidity();
+    _message[4] = String("Tempeture: ") + (int)_captorTempetureHumidity.getTemperature();
+    _message[5] = String("Humidity: ") + (int)_captorTempetureHumidity.getHumidity();
     _readCaptorDH11StartTime = millis();
   }
-  _message[5] = String("Captor1 T: ") + (!_captorWatterTop.read());
-  _message[6] = String("Cpator1 D: ") + (_captorWatterDown.read());
-  _message[7] = String("Captor2 T: ") + (!_captorWatterSecurityTop.read());
-  _message[8] = String("Captor2 D: ") + (_captorWatterSecurityDown.read());
+  _message[6] = String("Captor1 T: ") + (!_captorWatterTop.read());
+  _message[7] = String("Cpator1 D: ") + (_captorWatterDown.read());
+  _message[8] = String("Captor2 T: ") + (!_captorWatterSecurityTop.read());
+  _message[9] = String("Captor2 D: ") + (_captorWatterSecurityDown.read());
   
   // Display message
   if((currentTime - _displayDuration) > LCD_REFRESH_MILLIS) {
@@ -456,6 +463,40 @@ long Fat::_lastWashingTimeInMinutes(){
 
   return ((millis() - _lastWhasingTime) / 60000);
   
+}
+
+void Fat::_addWashingDuration(unsigned long lastWashingTime) {
+
+  if (lastWashingTime != 0) {
+
+    if (_currentPositionInListLastWashingTime + 1 == SIZE_AVERAGE_WASHING_TIME) {
+      _currentPositionInListLastWashingTime = 0;
+    }
+    else {
+      _currentPositionInListLastWashingTime++;
+    }
+  
+    _listLastWashingTime[_currentPositionInListLastWashingTime] = (millis() - lastWashingTime) / 60000;
+
+  }
+}
+
+long Fat::_getAverageWashingDurationInMinutes() {
+
+  int average = 0;
+  int nbItem = 0;
+  
+  for(int i = 0; i < SIZE_AVERAGE_WASHING_TIME; i++) {
+    if(_listLastWashingTime[i] != 0) {
+      average += _listLastWashingTime[i];
+      nbItem++;
+    }
+    else {
+      break;
+    }
+  }
+
+  return (average/nbItem);
 }
 
 /**
