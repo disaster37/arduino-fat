@@ -31,6 +31,7 @@ class Fat
     void run();
     void displayMessage();
     void setWashingDurationInSecond(int duration);
+    void setWaitTimeBetweenWasingInSecond(int duration);
     void debug();
   private:
     PinOutput _motorBarrel;
@@ -57,6 +58,7 @@ class Fat
     unsigned long _washingDuration;
     unsigned long _washingStartTime;
     unsigned long _lastWhasingTime;
+    unsigned long _waitTimeBetweenWhashing;
     long _listLastWashingTime[SIZE_AVERAGE_WASHING_TIME];
     int _currentPositionInListLastWashingTime;
     bool _isWashing;

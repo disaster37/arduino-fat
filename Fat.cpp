@@ -402,6 +402,14 @@ void Fat::setWashingDurationInSecond(int duration) {
 }
 
 /**
+ * Permit to set duration to wait between washing in second.
+ * It's to avoid to wash continuously.
+ */
+void Fat::setWaitTimeBetweenWasingInSecond(int duration) {
+  _waitTimeBetweenWhashing = duration * 1000;
+}
+
+/**
  * Permit to update the buttons state
  */
 void Fat::_updateInputState() {
@@ -496,7 +504,12 @@ long Fat::_getAverageWashingDurationInMinutes() {
     }
   }
 
-  return (average/nbItem);
+  if(nbItem == 0) {
+    return 0;
+  } else {
+    return (average/nbItem);
+  }
+  
 }
 
 /**

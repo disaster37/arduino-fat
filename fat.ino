@@ -13,8 +13,6 @@
 
 // Create FAT object
 Fat fat = Fat();
-PinOutput ledtest = PinOutput();
-Bounce test = Bounce();
 
 void setup()
 {
@@ -47,8 +45,6 @@ void setup()
   // Set the washing duration
   fat.setWashingDurationInSecond(15);
 
-  ledtest.attach(34);
-  test.attach(35, INPUT_PULLUP);
 
 
   
@@ -63,8 +59,5 @@ void loop()
   fat.run();
   //fat.debug();
   //test.update();
-  //Serial.println(String("Btn: ") + (!test.read()));
-
-  //Serial.println(String("Btn menu: ") + (!_buttonLCDDisplayDown.read()));
     
 }
