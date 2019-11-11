@@ -14,6 +14,8 @@
 // Create FAT object
 Fat fat = Fat();
 
+Timer timerTest = Timer();
+
 void setup()
 {
   // Init serial consol for debugging
@@ -43,12 +45,16 @@ void setup()
   
 
   // Set the washing duration
-  fat.setWashingDurationInSecond(15);
+  fat.setWashingDurationInSecond(20);
 
+  // Set the time to wait between two wash
+  fat.setWaitTimeBetweenWasingInSecond(600);
 
+  // Set the time to wait after pump run and before barrel move
+  fat.setWaitTimePumpInSecond(5);
 
-  
-
+  // Set the time to wait before start clean cycle to avoid captor issue
+  fat.setWaitTimeForceWashingCycleInMinute(180);
  
 }
  
@@ -58,6 +64,7 @@ void loop()
   // Run the FAT
   fat.run();
   //fat.debug();
-  //test.update();
+
+  //delay(2000);
     
 }

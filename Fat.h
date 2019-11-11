@@ -6,9 +6,11 @@
 #include "PinOutput.h"
 #include "LiquidCrystal.h"
 #include "DHTesp.h"
+#include "timer.h"
+#include "duration.h"
 
-#define SIZE_MESSAGE 10
-#define SIZE_AVERAGE_WASHING_TIME 10
+#define NUMBER_MESSAGE_LCD 11
+#define NUMBER_CHAR_LCD 100
 #define LCD_REFRESH_MILLIS 200
 #define CAPTOR_TEMP_HUMIDITY_REFRESH_MILLIS 2000
 
@@ -32,6 +34,8 @@ class Fat
     void displayMessage();
     void setWashingDurationInSecond(int duration);
     void setWaitTimeBetweenWasingInSecond(int duration);
+    void setWaitTimePumpInSecond(int duration);
+    void setWaitTimeForceWashingCycleInMinute(int duration);
     void debug();
   private:
     PinOutput _motorBarrel;
@@ -55,18 +59,12 @@ class Fat
     LiquidCrystal _lcd = LiquidCrystal(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     PinOutput _lcdLed;
     DHTesp _captorTempetureHumidity;
-    unsigned long _washingDuration;
-    unsigned long _washingStartTime;
-    unsigned long _lastWhasingTime;
-    unsigned long _waitTimeBetweenWhashing;
-    long _listLastWashingTime[SIZE_AVERAGE_WASHING_TIME];
-    int _currentPositionInListLastWashingTime;
     bool _isWashing;
     bool _isModeAuto;
     bool _isSecurity;
     bool _isForceMotorPump;
     bool _isForceMotorBarrel;
-    String _message[SIZE_MESSAGE];
+    char _message[NUMBER_MESSAGE_LCD][NUMBER_CHAR_LCD];
     int _messagePosition;
     bool _isLedLight;
     void _startMotorBarrel();
@@ -76,14 +74,14 @@ class Fat
     void _wash();
     void _updateInputState();
     void _manageLed();
-    long _lastWashingTimeInMinutes();
-    int _currentDelayWashing();
-    void _addWashingDuration(unsigned long lastWashingTime);
-    long _getAverageWashingDurationInMinutes();
-    unsigned long _displayDuration;
-    unsigned long _ledStartTime;
-    unsigned long _ledDuration;
-    unsigned long _readCaptorDH11StartTime;
+    Timer _timerWash;
+    Timer _timerLCDRefresh;
+    Timer _timerCaptorHumidityRefresh;
+    Timer _timerLedLightDuration;
+    Timer _timerWaitBetweenWash;
+    Timer _timerWaitPump;
+    Duration _durationWash;
+    int _waitTimeForceWashingCycle;
 };
 
 #endif

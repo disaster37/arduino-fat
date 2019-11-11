@@ -4,6 +4,8 @@
 #include "PinOutput.h"
 #include "LiquidCrystal.h"
 #include "DHTesp.h"
+#include "timer.h"
+#include "duration.h"
 
 
 
@@ -41,8 +43,6 @@ Fat::Fat()
   _buttonLCDDisplayDownLed = PinOutput();
 
   // Variable init
-  _washingDuration= 30000;
-  _washingStartTime = 0;
   _isWashing = false;
   _isForceMotorPump = false;
   _isForceMotorBarrel = false;
@@ -50,16 +50,29 @@ Fat::Fat()
   _isSecurity = false;
   _isLedLight = true;
   _messagePosition = 0;
-  _displayDuration = millis();
-  _ledDuration = 60000;
-  _ledStartTime = millis();
-  _readCaptorDH11StartTime = millis();
-  _lastWhasingTime = 0;
+  _waitTimeForceWashingCycle = 180;
 
-  _currentPositionInListLastWashingTime = 0;
-  for(int i = 0; i < SIZE_AVERAGE_WASHING_TIME; i++) {
-    _listLastWashingTime[i] = 0;
-  }
+  // Timers
+  _timerWash = Timer();
+  _timerWash.setTimerInSecond(30);
+  _timerWaitBetweenWash = Timer();
+  _timerWaitBetweenWash.setTimerInSecond(60);
+  _timerWaitPump = Timer();
+  _timerWaitPump.setTimerInSecond(10);
+  _timerLCDRefresh = Timer();
+  _timerLCDRefresh.setTimerInMilli(LCD_REFRESH_MILLIS);
+  _timerCaptorHumidityRefresh = Timer();
+  _timerCaptorHumidityRefresh.setTimerInMilli(CAPTOR_TEMP_HUMIDITY_REFRESH_MILLIS);
+  _timerLedLightDuration = Timer();
+  _timerLedLightDuration.setTimerInSecond(60);
+  // Start timer
+  _timerCaptorHumidityRefresh.start();
+  _timerLCDRefresh.start();
+  _timerLedLightDuration.start();
+  
+  // Durations
+  _durationWash = Duration();
+  _durationWash.start();
 
 }
 
@@ -196,117 +209,115 @@ void Fat::_stopMotorPump() {
  */
 void Fat::_wash() {
 
-  unsigned long startTime;
-
-  if (_washingStartTime == 0) {
-    _washingStartTime = millis();
-  }
-  
-  startTime = millis();
   // Washing is finished
-  if((startTime - _washingStartTime) > _washingDuration) {
+  if(_timerWash.isJustFinished()) {
     _stopMotorPump();
     _stopMotorBarrel();
-    _washingStartTime = 0;
-    _addWashingDuration(_lastWhasingTime);
-    _lastWhasingTime = millis();
     _isWashing = false;
+    _durationWash.start();
   }
-  
-  // Washing is running
-  else {
+  // Washing is not yet running
+  else if(_timerWash.isFinished()) {
+  // Start new washing cycle
+    _timerWash.start();
+    _timerWaitPump.start();
+    _durationWash.stop();
     _startMotorPump();
-    _startMotorBarrel();
     _isWashing = true;
+  }
+
+  if(_timerWaitPump.isJustFinished()) {
+       _startMotorBarrel();
   }
 }
 
 void Fat::displayMessage() {
 
+  
   // Manage position
   if(_buttonLCDDisplayDown.fell()) {
-    if(_messagePosition < (SIZE_MESSAGE -1)) {
+    if(_messagePosition < (NUMBER_MESSAGE_LCD -1)) {
       _messagePosition++;
     }
     else {
       _messagePosition = 0;
     }
   }
-
-  unsigned long currentTime = millis();
-
   
-
   // Compose all messages
-  String mode = "";
-  String state = "";
+  char mode[10] = "";
+  char state[10] = "";
+  char end_message[16] = "";
 
   if (_isModeAuto) {
-    mode = "Auto";
+    sprintf(mode, "%s", "Auto");
   }
 
   if (_isForceMotorPump) {
-    mode = "F Pump";
-    state = "Force";
+    sprintf(mode, "%s", "F Pump");
+    sprintf(state, "%s", "Force");
   }
 
   if (_isForceMotorBarrel) {
-    mode = "F Barrel";
-    state = "Force";
+    sprintf(mode, "%s", "F Barrel");
+    sprintf(state, "%s", "Force");
   }
 
   if (!_isModeAuto && !_isForceMotorPump && !_isForceMotorBarrel) {
-    mode = "Stop";
+    sprintf(mode, "%s", "Stop");
   }
 
   if (_isSecurity) {
-    state = "Security";
+    sprintf(state, "%s", "Security");
   }
 
   if (_isWashing) {
-    state = "Wash " + String(_currentDelayWashing());
+    sprintf(state, "Wash %d", _timerWash.getCurrentValueInSecond());
   }
 
   if (!_isSecurity && !_isWashing && !_isForceMotorPump && !_isForceMotorBarrel) {
-    state = "Off";
+    sprintf(state, "%s", "Off");
   }
 
-  
-  _message[0] = String("Mode: ") + mode;
-  _message[1] = String("State: ") + state;
-  _message[2] = String("Washing: ") + String(_lastWashingTimeInMinutes()) + String("min");
-  _message[3] = String("Avg: ") + String(_getAverageWashingDurationInMinutes()) + String("min");
+  sprintf(_message[0], "Mode: %s", mode);
+  sprintf(_message[1], "State: %s", state);
+  sprintf(_message[2], "Washing: %d min", _durationWash.getCurrentValueInMinute());
+  sprintf(_message[3], "Last: %d min", _durationWash.getLastValueFromHistoryInMinute());
+  sprintf(_message[4], "Avg: %d min", _durationWash.getAvgFromHistoryInMinute());
 
-  // Check to update value
-  if((currentTime - _readCaptorDH11StartTime) > CAPTOR_TEMP_HUMIDITY_REFRESH_MILLIS) {
-    _message[4] = String("Tempeture: ") + (int)_captorTempetureHumidity.getTemperature();
-    _message[5] = String("Humidity: ") + (int)_captorTempetureHumidity.getHumidity();
-    _readCaptorDH11StartTime = millis();
+  // Check to update humidity captor value
+  if(_timerCaptorHumidityRefresh.isJustFinished()) {
+    sprintf(_message[5], "Tempeture: %d", (int)_captorTempetureHumidity.getTemperature());
+    sprintf(_message[6], "Humidity: %d", (int)_captorTempetureHumidity.getHumidity());
+  } 
+  else if(_timerCaptorHumidityRefresh.isFinished()) {
+    _timerCaptorHumidityRefresh.start();
   }
-  _message[6] = String("Captor1 T: ") + (!_captorWatterTop.read());
-  _message[7] = String("Cpator1 D: ") + (_captorWatterDown.read());
-  _message[8] = String("Captor2 T: ") + (!_captorWatterSecurityTop.read());
-  _message[9] = String("Captor2 D: ") + (_captorWatterSecurityDown.read());
-  
+
+  sprintf(_message[7], "Captor1 T: %d", !_captorWatterTop.read());
+  sprintf(_message[8], "Cpator1 D: %d", _captorWatterDown.read());
+  sprintf(_message[9], "Captor2 T: %d", !_captorWatterSecurityTop.read());
+  sprintf(_message[10], "Captor2 D: %d", _captorWatterSecurityDown.read());
+
   // Display message
-  if((currentTime - _displayDuration) > LCD_REFRESH_MILLIS) {
-    _displayDuration = millis();
+  if(_timerLCDRefresh.isJustFinished()) {
     _lcd.clear();
-    char temp[16];
     _lcd.setCursor(0,0);
-    _message[_messagePosition].toCharArray(temp, 16);
-    _lcd.write(temp);
+    _lcd.write(_message[_messagePosition]);
   
     _lcd.setCursor(0, 1);
-    if(_messagePosition < (SIZE_MESSAGE -1)) {
-      _message[_messagePosition + 1].toCharArray(temp, 16);
-      _lcd.write(temp);
+    if(_messagePosition < (NUMBER_MESSAGE_LCD -1)) {
+      _lcd.write(_message[_messagePosition + 1]);
     }
     else {
-       String("               ").toCharArray(temp, 16);
-       _lcd.write(temp);
+       _lcd.write(end_message);
     }
+    
+  } else if (_timerLCDRefresh.isFinished()) {
+    // Run the timer
+    _timerLCDRefresh.start();
   }
+
 }
 
 /**
@@ -365,13 +376,11 @@ void Fat::run() {
 
   // Check if auto mode can running
   if (_isModeAuto && !_isForceMotorBarrel && !_isForceMotorPump) {
-    
-    // Check if washing is already started
-    if (_isWashing == true) {
+
+    // Check the captor state only if washing is not already started
+    if (_isWashing) {
       _wash();
     }
-
-    // Check the captor state
     else {
 
       // Check the security captor state
@@ -382,15 +391,18 @@ void Fat::run() {
       }
       else {
         _isSecurity = false;
-        if (_captorWatterTop.rose() || _captorWatterDown.fell() || _captorWatterSecurityTop.rose()) {
+        if ((_captorWatterTop.rose() || _captorWatterDown.fell() || _captorWatterSecurityTop.rose()) && (_timerWaitBetweenWash.isFinished())) {
+          _timerWaitBetweenWash.start();
+          _wash();
+        }
+
+        // Check if we need to force washing cycle because a long time without clean
+        if(_durationWash.getCurrentValueInMinute() >= _waitTimeForceWashingCycle) {
           _wash();
         }
       } 
     }
   }
-
-  
-  
 }
 
 /**
@@ -398,7 +410,7 @@ void Fat::run() {
  * Default to 30s
  */
 void Fat::setWashingDurationInSecond(int duration) {
-  _washingDuration = duration * 1000;
+  _timerWash.setTimerInSecond(duration);
 }
 
 /**
@@ -406,7 +418,24 @@ void Fat::setWashingDurationInSecond(int duration) {
  * It's to avoid to wash continuously.
  */
 void Fat::setWaitTimeBetweenWasingInSecond(int duration) {
-  _waitTimeBetweenWhashing = duration * 1000;
+  _timerWaitBetweenWash.setTimerInSecond(duration);
+}
+
+
+/**
+ * Permit to set duration to start pump before barrel in second.
+ * It's permit to have water before barrel move.
+ */
+void Fat::setWaitTimePumpInSecond(int duration) {
+  _timerWaitPump.setTimerInSecond(duration);
+}
+
+
+/**
+ * Permit to set the time to wait before lauch clean cycle.
+ */
+void Fat::setWaitTimeForceWashingCycleInMinute(int duration) {
+  _waitTimeForceWashingCycle = duration;
 }
 
 /**
@@ -424,6 +453,14 @@ void Fat::_updateInputState() {
   _captorWatterDown.update();
   _captorWatterSecurityTop.update();
   _captorWatterSecurityDown.update();
+  
+  _timerWash.update();
+  _timerWaitBetweenWash.update();
+  _timerWaitPump.update();
+  _timerLCDRefresh.update();
+  _timerCaptorHumidityRefresh.update();
+  _timerLedLightDuration.update();
+  _durationWash.update();
 }
 
 /**
@@ -433,16 +470,13 @@ void Fat::_manageLed() {
 
   // Comptute the led state
   if (_buttonStart.fell() || _buttonStop.fell() || _buttonForceMotorBarrel.fell() || _buttonForceMotorPump.fell() || _buttonForceWash.fell() || _buttonLCDDisplayDown.fell()) {
-    _ledStartTime = millis();
+    _timerLedLightDuration.start();
     _isLedLight = true;
   }
 
-  if (_isLedLight && ((millis() - _ledStartTime) > _ledDuration)) {
+  if (_timerLedLightDuration.isJustFinished()) {
     _isLedLight = false;
   }
-
-  Serial.println(_ledDuration);
-
 
   if(_isLedLight) {
     _buttonStartLed.toUp();
@@ -452,6 +486,7 @@ void Fat::_manageLed() {
     _buttonForceWashLed.toUp();
     _buttonLCDDisplayDownLed.toUp();
     _lcdLed.toUp();
+    _lcd.display();
   }
   else{
     _buttonStartLed.toDown();
@@ -461,112 +496,36 @@ void Fat::_manageLed() {
     _buttonForceWashLed.toDown();
     _buttonLCDDisplayDownLed.toDown();
     _lcdLed.toDown();
+    _lcd.noDisplay();
   }
 }
 
 /**
- * Permit to get the duration between now and the last washing in minutes
+ * Permit to display debug values
  */
-long Fat::_lastWashingTimeInMinutes(){
-
-  return ((millis() - _lastWhasingTime) / 60000);
-  
-}
-
-void Fat::_addWashingDuration(unsigned long lastWashingTime) {
-
-  if (lastWashingTime != 0) {
-
-    if (_currentPositionInListLastWashingTime + 1 == SIZE_AVERAGE_WASHING_TIME) {
-      _currentPositionInListLastWashingTime = 0;
-    }
-    else {
-      _currentPositionInListLastWashingTime++;
-    }
-  
-    _listLastWashingTime[_currentPositionInListLastWashingTime] = (millis() - lastWashingTime) / 60000;
-
-  }
-}
-
-long Fat::_getAverageWashingDurationInMinutes() {
-
-  int average = 0;
-  int nbItem = 0;
-  
-  for(int i = 0; i < SIZE_AVERAGE_WASHING_TIME; i++) {
-    if(_listLastWashingTime[i] != 0) {
-      average += _listLastWashingTime[i];
-      nbItem++;
-    }
-    else {
-      break;
-    }
-  }
-
-  if(nbItem == 0) {
-    return 0;
-  } else {
-    return (average/nbItem);
-  }
-  
-}
-
-/**
- * Return the number of second that stay before the washing ended
- */
-int Fat::_currentDelayWashing(){
-
-
-  unsigned long currentTime;
-
-  if (_washingStartTime == 0) {
-    return 0;
-  }
-  
-  currentTime = millis();
-
-  return int((_washingDuration - (currentTime - _washingStartTime))/1000);
-  
-  
-}
-
-
 void Fat::debug(){
-
-  _updateInputState();
 
   // Display debug message
   _lcd.setCursor(0,0);
   char debug[16] = "DEBUG";
   _lcd.write(debug);
 
-  // put all leds on
-  _isLedLight = true;
-  _manageLed();
+ 
+  Serial.println(_message[0]);
+  Serial.println(_message[1]);
+  Serial.println(_message[2]);
+  Serial.println(_message[3]);
+  Serial.println(_message[4]);
+  Serial.println(_message[5]);
+  Serial.println(_message[6]);
+  Serial.println(_message[7]);
+  Serial.println(_message[8]);
+  Serial.println(_message[9]);
+  Serial.println(_message[10]);
+  Serial.println(_durationWash.getCurrentValueInSecond());
+  Serial.println(_durationWash.getLastValueFromHistoryInSecond());
+  Serial.println(_durationWash.getAvgFromHistoryInSecond());
 
-  // Display button state
-  Serial.println(String("Btn Start: ") + (!_buttonStart.read()));
-  Serial.println(String("Btn Stop: ") + (!_buttonStop.read()));
-  Serial.println(String("Btn Force wash: ") + (!_buttonForceWash.read()));
-  Serial.println(String("Btn Force barrel: ") + (!_buttonForceMotorBarrel.read()));
-  Serial.println(String("Btn Force pump: ") + (!_buttonForceMotorPump.read()));
-  Serial.println(String("Btn menu: ") + (!_buttonLCDDisplayDown.read()));
-
-  // Display captor state
-  Serial.println(String("Cpt top: ") + (!_captorWatterTop.read()));
-  Serial.println(String("Cpt down: ") + (_captorWatterDown.read()));
-  Serial.println(String("Cpt2 top: ") + (!_captorWatterSecurityTop.read()));
-  Serial.println(String("Bpt2 down: ") + (_captorWatterSecurityDown.read()));
-
-  // Display relay state
-  Serial.println(String("Relay Pump: ") + _motorPump.state());
-  Serial.println(String("Relay Barrel: ") + _motorBarrel.state());
-
-  // Display last washing time
-  Serial.println(String("Last washing time: ") + _lastWashingTimeInMinutes() + String(" min"));
-  
-  delay(2000);
 }
 
 
