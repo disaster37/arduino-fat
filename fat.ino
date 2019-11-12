@@ -55,6 +55,9 @@ void setup()
 
   // Set the time to wait before start clean cycle to avoid captor issue
   fat.setWaitTimeForceWashingCycleInMinute(180);
+
+  // Set the time to wait before start clean cycle when tempeture is under than 0.
+  fat.setWaitTimeForceWashingCycleFreezeInMinute(60);
  
 }
  

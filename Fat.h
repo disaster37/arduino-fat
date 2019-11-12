@@ -36,6 +36,7 @@ class Fat
     void setWaitTimeBetweenWasingInSecond(int duration);
     void setWaitTimePumpInSecond(int duration);
     void setWaitTimeForceWashingCycleInMinute(int duration);
+    void setWaitTimeForceWashingCycleFreezeInMinute(int duration);
     void debug();
   private:
     PinOutput _motorBarrel;
@@ -82,6 +83,7 @@ class Fat
     Timer _timerWaitPump;
     Duration _durationWash;
     int _waitTimeForceWashingCycle;
+    int _waitTimeForceWashingCycleFreeze;
 };
 
 #endif

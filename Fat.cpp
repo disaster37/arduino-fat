@@ -51,6 +51,7 @@ Fat::Fat()
   _isLedLight = true;
   _messagePosition = 0;
   _waitTimeForceWashingCycle = 180;
+  _waitTimeForceWashingCycleFreeze = 60;
 
   // Timers
   _timerWash = Timer();
@@ -215,6 +216,7 @@ void Fat::_wash() {
     _stopMotorBarrel();
     _isWashing = false;
     _durationWash.start();
+    _timerWaitBetweenWash.start();
   }
   // Washing is not yet running
   else if(_timerWash.isFinished()) {
@@ -226,6 +228,7 @@ void Fat::_wash() {
     _isWashing = true;
   }
 
+  // Need start barrel
   if(_timerWaitPump.isJustFinished()) {
        _startMotorBarrel();
   }
@@ -250,7 +253,12 @@ void Fat::displayMessage() {
   char end_message[16] = "";
 
   if (_isModeAuto) {
-    sprintf(mode, "%s", "Auto");
+    if(_timerWaitBetweenWash.isRun()) {
+      sprintf(mode, "%s %d", "Auto", _timerWaitBetweenWash.getCurrentValueInSecond());
+    }
+    else {
+      sprintf(mode, "%s", "Auto");
+    }
   }
 
   if (_isForceMotorPump) {
@@ -392,13 +400,21 @@ void Fat::run() {
       else {
         _isSecurity = false;
         if ((_captorWatterTop.rose() || _captorWatterDown.fell() || _captorWatterSecurityTop.rose()) && (_timerWaitBetweenWash.isFinished())) {
-          _timerWaitBetweenWash.start();
           _wash();
         }
 
-        // Check if we need to force washing cycle because a long time without clean
-        if(_durationWash.getCurrentValueInMinute() >= _waitTimeForceWashingCycle) {
-          _wash();
+        // Check if we need to force washing cycle because a long time without clean and the impact of tempeture
+        if(_captorTempetureHumidity.getTemperature() < 0) {
+          // Tempeture is under 0 we force small cycle
+          if(_durationWash.getCurrentValueInMinute() >= _waitTimeForceWashingCycleFreeze) {
+            _wash();
+          }
+        }
+        else {
+          // Tempeture is bigger than 0, wee force normal cycle
+          if(_durationWash.getCurrentValueInMinute() >= _waitTimeForceWashingCycle) {
+            _wash();
+          }
         }
       } 
     }
@@ -436,6 +452,13 @@ void Fat::setWaitTimePumpInSecond(int duration) {
  */
 void Fat::setWaitTimeForceWashingCycleInMinute(int duration) {
   _waitTimeForceWashingCycle = duration;
+}
+
+/**
+ * Permit to set the time to wait before lauch clean cycle when it frozen.
+ */
+void Fat::setWaitTimeForceWashingCycleFreezeInMinute(int duration) {
+  _waitTimeForceWashingCycleFreeze = duration;
 }
 
 /**
