@@ -11,7 +11,7 @@
 
 #define NUMBER_MESSAGE_LCD 11
 #define NUMBER_CHAR_LCD 100
-#define LCD_REFRESH_MILLIS 200
+#define LCD_REFRESH_MILLIS 500
 #define CAPTOR_TEMP_HUMIDITY_REFRESH_MILLIS 2000
 
 class Fat
@@ -59,6 +59,7 @@ class Fat
     Bounce _captorWatterSecurityDown;
     LiquidCrystal _lcd = LiquidCrystal(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     PinOutput _lcdLed;
+    PinOutput _lcdContrast;
     DHTesp _captorTempetureHumidity;
     bool _isWashing;
     bool _isModeAuto;

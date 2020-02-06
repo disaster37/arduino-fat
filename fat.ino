@@ -14,12 +14,10 @@
 // Create FAT object
 Fat fat = Fat();
 
-Timer timerTest = Timer();
-
 void setup()
 {
   // Init serial consol for debugging
-  Serial.begin(9600);
+  //Serial.begin(9600);
 
   // Set the motor pin
   fat.attachMotorBarrel(PIN_MOTOR_BARREL);
@@ -67,7 +65,6 @@ void loop()
   // Run the FAT
   fat.run();
   //fat.debug();
-
   //delay(2000);
     
 }

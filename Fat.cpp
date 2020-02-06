@@ -41,6 +41,8 @@ Fat::Fat()
   _buttonForceMotorPumpLed = PinOutput();
   _buttonForceWashLed = PinOutput();
   _buttonLCDDisplayDownLed = PinOutput();
+  _lcdContrast = PinOutput();
+  _lcdLed = PinOutput();
 
   // Variable init
   _isWashing = false;
@@ -90,6 +92,7 @@ void Fat::attachMotorBarrel(uint8_t pin){
 void Fat::attachMotorPump(uint8_t pin){
   _motorPump.attach(pin);
 }
+
 
 /**
  * Attach the start button pin
@@ -162,8 +165,10 @@ void Fat::attachCaptorWatterSecurity(uint8_t pinCaptorTop, uint8_t pinCaptorDown
 void Fat::attachLCD(uint8_t pinRS, uint8_t pinEnable, uint8_t pinD0, uint8_t pinD1, uint8_t pinD2, uint8_t pinD3, uint8_t pinD4, uint8_t pinD5, uint8_t pinD6, uint8_t pinD7, uint8_t pinContrast, uint8_t pinLed) {
   _lcd = LiquidCrystal(pinRS, pinEnable, pinD0, pinD1, pinD2, pinD3, pinD4, pinD5, pinD6, pinD7);
   _lcdLed.attach(pinLed);
+  _lcdContrast.attach(pinContrast);
 
-  analogWrite(pinContrast, 15);
+  _lcdLed.toUp();
+  _lcdContrast.toUp();
   _lcd.begin(16, 2); // règle la taille du LCD : 16 colonnes et 2 lignes
   _lcd.display();
 }
@@ -248,9 +253,9 @@ void Fat::displayMessage() {
   }
   
   // Compose all messages
-  char mode[10] = "";
-  char state[10] = "";
-  char end_message[16] = "";
+  char mode[30] = "";
+  char state[30] = "";
+  char end_message[30] = "";
 
   if (_isModeAuto) {
     if(_timerWaitBetweenWash.isRun()) {
@@ -310,20 +315,19 @@ void Fat::displayMessage() {
   // Display message
   if(_timerLCDRefresh.isJustFinished()) {
     _lcd.clear();
-    _lcd.setCursor(0,0);
-    _lcd.write(_message[_messagePosition]);
+    _lcd.print(_message[_messagePosition]);
   
     _lcd.setCursor(0, 1);
     if(_messagePosition < (NUMBER_MESSAGE_LCD -1)) {
-      _lcd.write(_message[_messagePosition + 1]);
+      _lcd.print(_message[_messagePosition + 1]);
     }
     else {
-       _lcd.write(end_message);
+       _lcd.print(end_message);
     }
     
-  } else if (_timerLCDRefresh.isFinished()) {
-    // Run the timer
+    // Run timer again
     _timerLCDRefresh.start();
+    
   }
 
 }
@@ -531,7 +535,7 @@ void Fat::debug(){
   // Display debug message
   _lcd.setCursor(0,0);
   char debug[16] = "DEBUG";
-  _lcd.write(debug);
+  _lcd.print(debug);
 
  
   Serial.println(_message[0]);
