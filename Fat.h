@@ -85,6 +85,8 @@ class Fat
     Duration _durationWash;
     int _waitTimeForceWashingCycle;
     int _waitTimeForceWashingCycleFreeze;
+    int _humidityValue;
+    int _tempetureValue;
 };
 
 #endif

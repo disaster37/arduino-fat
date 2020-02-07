@@ -54,6 +54,8 @@ Fat::Fat()
   _messagePosition = 0;
   _waitTimeForceWashingCycle = 180;
   _waitTimeForceWashingCycleFreeze = 60;
+  _humidityValue = 0;
+  _tempetureValue = 0;
 
   // Timers
   _timerWash = Timer();
@@ -297,16 +299,8 @@ void Fat::displayMessage() {
   sprintf(_message[2], "Washing: %d min", _durationWash.getCurrentValueInMinute());
   sprintf(_message[3], "Last: %d min", _durationWash.getLastValueFromHistoryInMinute());
   sprintf(_message[4], "Avg: %d min", _durationWash.getAvgFromHistoryInMinute());
-
-  // Check to update humidity captor value
-  if(_timerCaptorHumidityRefresh.isJustFinished()) {
-    sprintf(_message[5], "Tempeture: %d", (int)_captorTempetureHumidity.getTemperature());
-    sprintf(_message[6], "Humidity: %d", (int)_captorTempetureHumidity.getHumidity());
-  } 
-  else if(_timerCaptorHumidityRefresh.isFinished()) {
-    _timerCaptorHumidityRefresh.start();
-  }
-
+  sprintf(_message[5], "Tempeture: %d", _tempetureValue);
+  sprintf(_message[6], "Humidity: %d", _humidityValue);
   sprintf(_message[7], "Captor1 T: %d", !_captorWatterTop.read());
   sprintf(_message[8], "Cpator1 D: %d", _captorWatterDown.read());
   sprintf(_message[9], "Captor2 T: %d", !_captorWatterSecurityTop.read());
@@ -408,7 +402,7 @@ void Fat::run() {
         }
 
         // Check if we need to force washing cycle because a long time without clean and the impact of tempeture
-        if(_captorTempetureHumidity.getTemperature() < 0) {
+        if(_tempetureValue < 0) {
           // Tempeture is under 0 we force small cycle
           if(_durationWash.getCurrentValueInMinute() >= _waitTimeForceWashingCycleFreeze) {
             _wash();
@@ -488,6 +482,13 @@ void Fat::_updateInputState() {
   _timerCaptorHumidityRefresh.update();
   _timerLedLightDuration.update();
   _durationWash.update();
+  
+  // Update tempeture and humidity value
+  if(_timerCaptorHumidityRefresh.isJustFinished()) {
+    _tempetureValue = (int)_captorTempetureHumidity.getTemperature());
+    _humidityValue = (int)_captorTempetureHumidity.getHumidity());
+    _timerCaptorHumidityRefresh.start();
+  }
 }
 
 /**
