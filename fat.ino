@@ -43,13 +43,13 @@ void setup()
   
 
   // Set the washing duration
-  fat.setWashingDurationInSecond(20);
+  fat.setWashingDurationInSecond(13);
 
   // Set the time to wait between two wash
-  fat.setWaitTimeBetweenWasingInSecond(600);
+  fat.setWaitTimeBetweenWasingInSecond(30);
 
   // Set the time to wait after pump run and before barrel move
-  fat.setWaitTimePumpInSecond(5);
+  fat.setWaitTimePumpInSecond(2);
 
   // Set the time to wait before start clean cycle to avoid captor issue
   fat.setWaitTimeForceWashingCycleInMinute(180);

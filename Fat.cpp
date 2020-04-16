@@ -485,8 +485,8 @@ void Fat::_updateInputState() {
   
   // Update tempeture and humidity value
   if(_timerCaptorHumidityRefresh.isJustFinished()) {
-    _tempetureValue = (int)_captorTempetureHumidity.getTemperature());
-    _humidityValue = (int)_captorTempetureHumidity.getHumidity());
+    _tempetureValue = (int)_captorTempetureHumidity.getTemperature();
+    _humidityValue = (int)_captorTempetureHumidity.getHumidity();
     _timerCaptorHumidityRefresh.start();
   }
 }
@@ -555,5 +555,3 @@ void Fat::debug(){
   Serial.println(_durationWash.getAvgFromHistoryInSecond());
 
 }
-
-
