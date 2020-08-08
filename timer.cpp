@@ -60,5 +60,6 @@ bool Timer::isJustFinished() {
 
 void Timer::start() {
     _run = true;
+    _justFinished = false;
     _currentTime = millis();
 }
