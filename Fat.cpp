@@ -79,6 +79,15 @@ Fat::Fat()
   _durationWash = Duration();
   _durationWash.start();
 
+  // External events
+  _virtualButtonstop = ExternalEvent();
+  _virtualButtonAuto = ExternalEvent();
+  _virtualButtonWash = ExternalEvent();
+  _virtualButtonStartDrum = ExternalEvent();
+  _virtualButtonStopDrum = ExternalEvent();
+  _virtualButtonStartPump = ExternalEvent();
+  _virtualButtonStopPump = ExternalEvent();
+
 }
 
 /**
@@ -326,6 +335,8 @@ void Fat::displayMessage() {
 
 }
 
+
+
 /**
  * The main function that check if fonction is needed depend to button or captor
  */
@@ -336,7 +347,7 @@ void Fat::run() {
   displayMessage();
 
   // Check if stop all is needed
-  if (_buttonStop.fell() == true) {
+  if (_buttonStop.fell() || _virtualButtonstop.isFired()) {
      _isModeAuto = false;
      _stopMotorPump();
      _stopMotorBarrel();
@@ -345,37 +356,37 @@ void Fat::run() {
   
 
   // Check if force pump is needed
-  if (_buttonForceMotorPump.fell()){
+  if (_buttonForceMotorPump.fell() || _virtualButtonStartPump.isFired()){
     _isForceMotorPump = true;
     _startMotorPump();
     
   }
 
   // Check if force pump is finished
-  if (_buttonForceMotorPump.rose()){
+  if (_buttonForceMotorPump.rose() || _virtualButtonStopPump.isFired()){
     _stopMotorPump();
     _isForceMotorPump = false;
   }
 
   // Check if force barrel is needed
-  if (_buttonForceMotorBarrel.fell()){
+  if (_buttonForceMotorBarrel.fell() || _virtualButtonStartDrum.isFired()){
     _isForceMotorBarrel = true;
     _startMotorBarrel();
   }
 
   // Check if force barrel is finished
-  if (_buttonForceMotorBarrel.rose()){
+  if (_buttonForceMotorBarrel.rose() || _virtualButtonStopDrum.isFired()){
     _isForceMotorBarrel = false;
     _stopMotorBarrel();
   }
 
   // Check if force washing is needed
-  if (_buttonForceWash.fell() && _isModeAuto) {
+  if ((_buttonForceWash.fell() || _virtualButtonWash.isFired()) && _isModeAuto) {
     _wash();
   }
 
   // Check if auto mode is needed
-  if (_buttonStart.fell()) {
+  if (_buttonStart.fell() || _virtualButtonAuto.isFired()) {
     _isModeAuto = true;
   }
 
@@ -482,7 +493,15 @@ void Fat::_updateInputState() {
   _timerCaptorHumidityRefresh.update();
   _timerLedLightDuration.update();
   _durationWash.update();
-  
+
+  _virtualButtonstop.update();
+  _virtualButtonAuto.update();
+  _virtualButtonWash.update();
+  _virtualButtonStartDrum.update();
+  _virtualButtonStopDrum.update();
+  _virtualButtonStartPump.update();
+  _virtualButtonStopPump.update();
+
   // Update tempeture and humidity value
   if(_timerCaptorHumidityRefresh.isJustFinished()) {
     _tempetureValue = (int)_captorTempetureHumidity.getTemperature();
@@ -539,19 +558,65 @@ void Fat::debug(){
   _lcd.print(debug);
 
  
-  Serial.println(_message[0]);
-  Serial.println(_message[1]);
-  Serial.println(_message[2]);
-  Serial.println(_message[3]);
-  Serial.println(_message[4]);
-  Serial.println(_message[5]);
-  Serial.println(_message[6]);
-  Serial.println(_message[7]);
-  Serial.println(_message[8]);
-  Serial.println(_message[9]);
-  Serial.println(_message[10]);
-  Serial.println(_durationWash.getCurrentValueInSecond());
-  Serial.println(_durationWash.getLastValueFromHistoryInSecond());
-  Serial.println(_durationWash.getAvgFromHistoryInSecond());
+  DEBUG_PRINTLN(_message[0]);
+  DEBUG_PRINTLN(_message[1]);
+  DEBUG_PRINTLN(_message[2]);
+  DEBUG_PRINTLN(_message[3]);
+  DEBUG_PRINTLN(_message[4]);
+  DEBUG_PRINTLN(_message[5]);
+  DEBUG_PRINTLN(_message[6]);
+  DEBUG_PRINTLN(_message[7]);
+  DEBUG_PRINTLN(_message[8]);
+  DEBUG_PRINTLN(_message[9]);
+  DEBUG_PRINTLN(_message[10]);
+  DEBUG_PRINTLN(_durationWash.getCurrentValueInSecond());
+  DEBUG_PRINTLN(_durationWash.getLastValueFromHistoryInSecond());
+  DEBUG_PRINTLN(_durationWash.getAvgFromHistoryInSecond());
 
+}
+
+
+// Set the stop mode and stop all motors
+void Fat::stop() {
+  _virtualButtonstop.fire();
+}
+
+// Set the auto mode
+void Fat::autoMode() {
+  _virtualButtonAuto.fire();
+}
+
+// Wash force washing cycle
+void Fat::wash() {
+  _virtualButtonWash.fire();
+}
+
+// Force drum motor
+void Fat::startMotorBarrel() {
+  _virtualButtonStartDrum.fire();
+}
+
+// Stop force frum motor
+void Fat::stopMotorBarrel() {
+  _virtualButtonStopDrum.fire();
+}
+
+// Force pump
+void Fat::startMotorPump() {
+  _virtualButtonStartPump.fire();
+}
+
+// STop force pump
+void Fat::stopMotorPump() {
+  _virtualButtonStopPump.fire();
+}
+
+State Fat::getState() {
+  State state = State();
+  state.isWashed = _isWashing;
+  state.isAuto = _isModeAuto;
+  state.isStopped = !_isModeAuto;
+  state.isSecurity = _isSecurity;
+
+  return state;
 }

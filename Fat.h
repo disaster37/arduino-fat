@@ -8,6 +8,10 @@
 #include "DHTesp.h"
 #include "timer.h"
 #include "duration.h"
+#include "ExternalEvent.h"
+#include "State.h"
+#include <Firmata.h>
+#include "utility/firmataDebug.h"
 
 #define NUMBER_MESSAGE_LCD 11
 #define NUMBER_CHAR_LCD 100
@@ -38,6 +42,15 @@ class Fat
     void setWaitTimeForceWashingCycleInMinute(int duration);
     void setWaitTimeForceWashingCycleFreezeInMinute(int duration);
     void debug();
+    void wash();
+    void stop();
+    void autoMode();
+    void startMotorBarrel();
+    void stopMotorBarrel();
+    void startMotorPump();
+    void stopMotorPump();
+    State getState();
+
   private:
     PinOutput _motorBarrel;
     PinOutput _motorPump;
@@ -87,6 +100,14 @@ class Fat
     int _waitTimeForceWashingCycleFreeze;
     int _humidityValue;
     int _tempetureValue;
+    ExternalEvent _virtualButtonstop;
+    ExternalEvent _virtualButtonAuto;
+    ExternalEvent _virtualButtonWash;
+    ExternalEvent _virtualButtonStartDrum;
+    ExternalEvent _virtualButtonStopDrum;
+    ExternalEvent _virtualButtonStartPump;
+    ExternalEvent _virtualButtonStopPump;
+
 };
 
 #endif

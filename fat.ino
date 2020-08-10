@@ -1,23 +1,30 @@
-
-
-#include "LiquidCrystal.h" //ajout de la librairie
-#include "Bounce2.h"
+#include <Firmata.h>
+#include "utility/firmataDebug.h"
 #include "Settings.h"
-#include "PinOutput.h"
-#include "Ultrasonic.h"
-#include "DHTesp.h"
-#include <dht11.h>
 #include "Fat.h"
+#include <avr/wdt.h>
+#include <aREST.h>
 
+//#define SERIAL_DEBUG
 
 
 // Create FAT object
 Fat fat = Fat();
+bool isRebooted;
+bool isWashed;
+bool isAuto;
+bool isStopped;
+bool isSecurity;
+bool isEmergencyStopped;
+// Create aREST instance
+aREST rest = aREST();
+
+
 
 void setup()
 {
-  // Init serial consol for debugging
-  //Serial.begin(9600);
+  DEBUG_BEGIN(115200);
+  Serial.begin(115200);
 
   // Set the motor pin
   fat.attachMotorBarrel(PIN_MOTOR_BARREL);
@@ -41,7 +48,6 @@ void setup()
   // Set the LCD pin
   fat.attachLCD(PIN_LCD_RS, PIN_LCD_ENABLE, PIN_LCD_D0, PIN_LCD_D1, PIN_LCD_D2, PIN_LCD_D3, PIN_LCD_D4, PIN_LCD_D5, PIN_LCD_D6, PIN_LCD_D7, PIN_LCD_CONTRAST, PIN_LCD_LED);
   
-
   // Set the washing duration
   fat.setWashingDurationInSecond(13);
 
@@ -56,15 +62,86 @@ void setup()
 
   // Set the time to wait before start clean cycle when tempeture is under than 0.
   fat.setWaitTimeForceWashingCycleFreezeInMinute(60);
+
+  // Configure aREST
+  isRebooted = true;
+  isWashed = false;
+  isAuto = false;
+  isStopped = false;
+  isSecurity = false;
+  isEmergencyStopped = false;
+
+  rest.set_id("000004");
+  rest.set_name("DFP");
+  rest.variable("isRebooted",&isRebooted);
+  rest.variable("isWashed",&isWashed);
+  rest.variable("isAuto",&isAuto);
+  rest.variable("isStopped",&isStopped);
+  rest.variable("isSecurity",&isSecurity);
+  rest.variable("isEmergencyStopped",&isEmergencyStopped);
+
+  rest.function("acknoledgeReboot", acknoledgeReboot);
+  rest.function("action", action);
+
+  // Start watchdog
+  wdt_enable(WDTO_4S);
  
 }
  
 void loop()
 {
 
-  // Run the FAT
+  #ifdef SERIAL_DEBUG
+  fat.debug();
+  #endif
+
   fat.run();
-  //fat.debug();
-  //delay(2000);
+  updateState();
+  rest.handle(Serial);
+  wdt_reset();
     
+}
+
+// Handle acknoledge when client look arduino have rebooted
+int acknoledgeReboot(String command) {
+  DEBUG_PRINTLN("Acknoledge reboot");
+  isRebooted = false;
+  return 1;
+}
+
+// Handle action on DFP
+int action(String command) {
+  if(command == "auto") {
+    fat.autoMode();
+  }
+  else if(command == "stop") {
+    fat.stop();
+  }
+  else if(command == "wash") {
+    fat.wash();
+  }
+  else if(command == "startBarrel") {
+    fat.startMotorBarrel();
+  }
+  else if(command == "stopBarrel") {
+    fat.stopMotorBarrel();
+  }
+  else if(command == "startPump") {
+    fat.startMotorPump();
+  }
+  else if(command == "stopPump") {
+    fat.stopMotorPump();
+  }
+
+  return 0;
+}
+
+// Update the current state of DFP for API
+void updateState() {
+  State state = fat.getState();
+  isWashed = state.isWashed;
+  isAuto = state.isAuto;
+  isStopped = state.isStopped;
+  isSecurity = state.isSecurity;
+  isEmergencyStopped = state.isEmergencyStopped;
 }
